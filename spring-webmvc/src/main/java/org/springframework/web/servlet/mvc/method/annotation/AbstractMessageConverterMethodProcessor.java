@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,16 +19,15 @@ package org.springframework.web.servlet.mvc.method.annotation;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-import javax.servlet.ServletRequest;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.core.GenericTypeResolver;
 import org.springframework.core.MethodParameter;
@@ -53,6 +52,7 @@ import org.springframework.http.server.ServletServerHttpResponse;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.accept.ContentNegotiationManager;
@@ -76,19 +76,19 @@ public abstract class AbstractMessageConverterMethodProcessor extends AbstractMe
 		implements HandlerMethodReturnValueHandler {
 
 	/* Extensions associated with the built-in message converters */
-	private static final Set<String> SAFE_EXTENSIONS = new HashSet<>(Arrays.asList(
+	private static final Set<String> SAFE_EXTENSIONS = Set.of(
 			"txt", "text", "yml", "properties", "csv",
 			"json", "xml", "atom", "rss",
-			"png", "jpe", "jpeg", "jpg", "gif", "wbmp", "bmp"));
+			"png", "jpe", "jpeg", "jpg", "gif", "wbmp", "bmp");
 
-	private static final Set<String> SAFE_MEDIA_BASE_TYPES = new HashSet<>(
-			Arrays.asList("audio", "image", "video"));
+	private static final Set<String> SAFE_MEDIA_BASE_TYPES =
+			Set.of("audio", "image", "video");
 
 	private static final List<MediaType> ALL_APPLICATION_MEDIA_TYPES =
-			Arrays.asList(MediaType.ALL, new MediaType("application"));
+			List.of(MediaType.ALL, new MediaType("application"));
 
 	private static final Type RESOURCE_REGION_LIST_TYPE =
-			new ParameterizedTypeReference<List<ResourceRegion>>() { }.getType();
+			new ParameterizedTypeReference<List<ResourceRegion>>() {}.getType();
 
 
 	private final ContentNegotiationManager contentNegotiationManager;
@@ -242,16 +242,16 @@ public abstract class AbstractMessageConverterMethodProcessor extends AbstractMe
 				}
 			}
 			if (mediaTypesToUse.isEmpty()) {
-				if (body != null) {
-					throw new HttpMediaTypeNotAcceptableException(producibleTypes);
-				}
 				if (logger.isDebugEnabled()) {
 					logger.debug("No match for " + acceptableTypes + ", supported: " + producibleTypes);
+				}
+				if (body != null) {
+					throw new HttpMediaTypeNotAcceptableException(producibleTypes);
 				}
 				return;
 			}
 
-			MediaType.sortBySpecificityAndQuality(mediaTypesToUse);
+			MimeTypeUtils.sortBySpecificity(mediaTypesToUse);
 
 			for (MediaType mediaType : mediaTypesToUse) {
 				if (mediaType.isConcrete()) {
@@ -400,7 +400,12 @@ public abstract class AbstractMessageConverterMethodProcessor extends AbstractMe
 	 */
 	private MediaType getMostSpecificMediaType(MediaType acceptType, MediaType produceType) {
 		MediaType produceTypeToUse = produceType.copyQualityValue(acceptType);
-		return (MediaType.SPECIFICITY_COMPARATOR.compare(acceptType, produceTypeToUse) <= 0 ? acceptType : produceTypeToUse);
+		if (acceptType.isLessSpecific(produceTypeToUse)) {
+			return produceTypeToUse;
+		}
+		else {
+			return acceptType;
+		}
 	}
 
 	/**

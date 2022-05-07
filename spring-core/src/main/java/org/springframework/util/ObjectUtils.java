@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -250,21 +250,35 @@ public abstract class ObjectUtils {
 	 * @return the new array (of the same component type; never {@code null})
 	 */
 	public static <A, O extends A> A[] addObjectToArray(@Nullable A[] array, @Nullable O obj) {
-		Class<?> compType = Object.class;
+		return addObjectToArray(array, obj, (array != null ? array.length : 0));
+	}
+
+	/**
+	 * Add the given object to the given array at the specified position, returning
+	 * a new array consisting of the input array contents plus the given object.
+	 * @param array the array to add to (can be {@code null})
+	 * @param obj the object to append
+	 * @param position the position at which to add the object
+	 * @return the new array (of the same component type; never {@code null})
+	 * @since 6.0
+	 */
+	public static <A, O extends A> A[] addObjectToArray(@Nullable A[] array, @Nullable O obj, int position) {
+		Class<?> componentType = Object.class;
 		if (array != null) {
-			compType = array.getClass().getComponentType();
+			componentType = array.getClass().getComponentType();
 		}
 		else if (obj != null) {
-			compType = obj.getClass();
+			componentType = obj.getClass();
 		}
-		int newArrLength = (array != null ? array.length + 1 : 1);
+		int newArrayLength = (array != null ? array.length + 1 : 1);
 		@SuppressWarnings("unchecked")
-		A[] newArr = (A[]) Array.newInstance(compType, newArrLength);
+		A[] newArray = (A[]) Array.newInstance(componentType, newArrayLength);
 		if (array != null) {
-			System.arraycopy(array, 0, newArr, 0, array.length);
+			System.arraycopy(array, 0, newArray, 0, position);
+			System.arraycopy(array, position, newArray, position + 1, array.length - position);
 		}
-		newArr[newArr.length - 1] = obj;
-		return newArr;
+		newArray[position] = obj;
+		return newArray;
 	}
 
 	/**
@@ -556,42 +570,6 @@ public abstract class ObjectUtils {
 			hash = MULTIPLIER * hash + element;
 		}
 		return hash;
-	}
-
-	/**
-	 * Return the same value as {@link Boolean#hashCode(boolean)}}.
-	 * @deprecated as of Spring Framework 5.0, in favor of the native JDK 8 variant
-	 */
-	@Deprecated
-	public static int hashCode(boolean bool) {
-		return Boolean.hashCode(bool);
-	}
-
-	/**
-	 * Return the same value as {@link Double#hashCode(double)}}.
-	 * @deprecated as of Spring Framework 5.0, in favor of the native JDK 8 variant
-	 */
-	@Deprecated
-	public static int hashCode(double dbl) {
-		return Double.hashCode(dbl);
-	}
-
-	/**
-	 * Return the same value as {@link Float#hashCode(float)}}.
-	 * @deprecated as of Spring Framework 5.0, in favor of the native JDK 8 variant
-	 */
-	@Deprecated
-	public static int hashCode(float flt) {
-		return Float.hashCode(flt);
-	}
-
-	/**
-	 * Return the same value as {@link Long#hashCode(long)}}.
-	 * @deprecated as of Spring Framework 5.0, in favor of the native JDK 8 variant
-	 */
-	@Deprecated
-	public static int hashCode(long lng) {
-		return Long.hashCode(lng);
 	}
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,12 +36,13 @@ import org.springframework.core.MethodParameter;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.SynthesizingMethodParameter;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ObjectUtils;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
@@ -84,7 +85,7 @@ public class HandlerMethod {
 	private final MethodParameter[] parameters;
 
 	@Nullable
-	private HttpStatus responseStatus;
+	private HttpStatusCode responseStatus;
 
 	@Nullable
 	private String responseStatusReason;
@@ -119,6 +120,7 @@ public class HandlerMethod {
 		this.beanType = ClassUtils.getUserClass(bean);
 		this.method = method;
 		this.bridgedMethod = BridgeMethodResolver.findBridgedMethod(method);
+		ReflectionUtils.makeAccessible(this.bridgedMethod);
 		this.parameters = initMethodParameters();
 		evaluateResponseStatus();
 		this.description = initDescription(this.beanType, this.method);
@@ -137,6 +139,7 @@ public class HandlerMethod {
 		this.beanType = ClassUtils.getUserClass(bean);
 		this.method = bean.getClass().getMethod(methodName, parameterTypes);
 		this.bridgedMethod = BridgeMethodResolver.findBridgedMethod(this.method);
+		ReflectionUtils.makeAccessible(this.bridgedMethod);
 		this.parameters = initMethodParameters();
 		evaluateResponseStatus();
 		this.description = initDescription(this.beanType, this.method);
@@ -172,6 +175,7 @@ public class HandlerMethod {
 		this.beanType = ClassUtils.getUserClass(beanType);
 		this.method = method;
 		this.bridgedMethod = BridgeMethodResolver.findBridgedMethod(method);
+		ReflectionUtils.makeAccessible(this.bridgedMethod);
 		this.parameters = initMethodParameters();
 		evaluateResponseStatus();
 		this.description = initDescription(this.beanType, this.method);
@@ -292,7 +296,7 @@ public class HandlerMethod {
 	 * @see ResponseStatus#code()
 	 */
 	@Nullable
-	protected HttpStatus getResponseStatus() {
+	protected HttpStatusCode getResponseStatus() {
 		return this.responseStatus;
 	}
 
@@ -366,9 +370,8 @@ public class HandlerMethod {
 	 */
 	public HandlerMethod createWithResolvedBean() {
 		Object handler = this.bean;
-		if (this.bean instanceof String) {
+		if (this.bean instanceof String beanName) {
 			Assert.state(this.beanFactory != null, "Cannot resolve bean name without BeanFactory");
-			String beanName = (String) this.bean;
 			handler = this.beanFactory.getBean(beanName);
 		}
 		return new HandlerMethod(this, handler);
@@ -424,10 +427,9 @@ public class HandlerMethod {
 		if (this == other) {
 			return true;
 		}
-		if (!(other instanceof HandlerMethod)) {
+		if (!(other instanceof HandlerMethod otherMethod)) {
 			return false;
 		}
-		HandlerMethod otherMethod = (HandlerMethod) other;
 		return (this.bean.equals(otherMethod.bean) && this.method.equals(otherMethod.method));
 	}
 
@@ -578,21 +580,21 @@ public class HandlerMethod {
 	private class ReturnValueMethodParameter extends HandlerMethodParameter {
 
 		@Nullable
-		private final Object returnValue;
+		private final Class<?> returnValueType;
 
 		public ReturnValueMethodParameter(@Nullable Object returnValue) {
 			super(-1);
-			this.returnValue = returnValue;
+			this.returnValueType = (returnValue != null ? returnValue.getClass() : null);
 		}
 
 		protected ReturnValueMethodParameter(ReturnValueMethodParameter original) {
 			super(original);
-			this.returnValue = original.returnValue;
+			this.returnValueType = original.returnValueType;
 		}
 
 		@Override
 		public Class<?> getParameterType() {
-			return (this.returnValue != null ? this.returnValue.getClass() : super.getParameterType());
+			return (this.returnValueType != null ? this.returnValueType : super.getParameterType());
 		}
 
 		@Override

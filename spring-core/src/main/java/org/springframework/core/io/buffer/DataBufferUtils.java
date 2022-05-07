@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
+import reactor.util.context.Context;
 
 import org.springframework.core.io.Resource;
 import org.springframework.lang.Nullable;
@@ -512,8 +513,7 @@ public abstract class DataBufferUtils {
 	 * @return {@code true} if the buffer was released; {@code false} otherwise.
 	 */
 	public static boolean release(@Nullable DataBuffer dataBuffer) {
-		if (dataBuffer instanceof PooledDataBuffer) {
-			PooledDataBuffer pooledDataBuffer = (PooledDataBuffer) dataBuffer;
+		if (dataBuffer instanceof PooledDataBuffer pooledDataBuffer) {
 			if (pooledDataBuffer.isAllocated()) {
 				try {
 					return pooledDataBuffer.release();
@@ -607,15 +607,14 @@ public abstract class DataBufferUtils {
 	}
 
 	private static NestedMatcher createMatcher(byte[] delimiter) {
-		Assert.isTrue(delimiter.length > 0, "Delimiter must not be empty");
-		switch (delimiter.length) {
-			case 1:
-				return (delimiter[0] == 10 ? SingleByteMatcher.NEWLINE_MATCHER : new SingleByteMatcher(delimiter));
-			case 2:
-				return new TwoByteMatcher(delimiter);
-			default:
-				return new KnuthMorrisPrattMatcher(delimiter);
-		}
+		// extract length due to Eclipse IDE compiler error in switch expression
+		int length = delimiter.length;
+		Assert.isTrue(length > 0, "Delimiter must not be empty");
+		return switch (length) {
+			case 1 -> (delimiter[0] == 10 ? SingleByteMatcher.NEWLINE_MATCHER : new SingleByteMatcher(delimiter));
+			case 2 -> new TwoByteMatcher(delimiter);
+			default -> new KnuthMorrisPrattMatcher(delimiter);
+		};
 	}
 
 
@@ -1057,6 +1056,12 @@ public abstract class DataBufferUtils {
 		protected void hookOnComplete() {
 			this.sink.complete();
 		}
+
+		@Override
+		public Context currentContext() {
+			return Context.of(this.sink.contextView());
+		}
+
 	}
 
 
@@ -1148,6 +1153,12 @@ public abstract class DataBufferUtils {
 			this.sink.next(dataBuffer);
 			this.dataBuffer.set(null);
 		}
+
+		@Override
+		public Context currentContext() {
+			return Context.of(this.sink.contextView());
+		}
+
 	}
 
 }

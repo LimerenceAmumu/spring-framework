@@ -24,7 +24,6 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPlugin;
-import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.compile.JavaCompile;
 
 /**
@@ -32,6 +31,7 @@ import org.gradle.api.tasks.compile.JavaCompile;
  *
  * @author Brian Clozel
  * @author Sam Brannen
+ * @author Sebastien Deleuze
  */
 public class CompilerConventionsPlugin implements Plugin<Project> {
 
@@ -43,7 +43,8 @@ public class CompilerConventionsPlugin implements Plugin<Project> {
 		List<String> commonCompilerArgs = Arrays.asList(
 				"-Xlint:serial", "-Xlint:cast", "-Xlint:classfile", "-Xlint:dep-ann",
 				"-Xlint:divzero", "-Xlint:empty", "-Xlint:finally", "-Xlint:overrides",
-				"-Xlint:path", "-Xlint:processing", "-Xlint:static", "-Xlint:try", "-Xlint:-options"
+				"-Xlint:path", "-Xlint:processing", "-Xlint:static", "-Xlint:try", "-Xlint:-options",
+				"-parameters"
 		);
 		COMPILER_ARGS = new ArrayList<>();
 		COMPILER_ARGS.addAll(commonCompilerArgs);
@@ -54,7 +55,7 @@ public class CompilerConventionsPlugin implements Plugin<Project> {
 		TEST_COMPILER_ARGS = new ArrayList<>();
 		TEST_COMPILER_ARGS.addAll(commonCompilerArgs);
 		TEST_COMPILER_ARGS.addAll(Arrays.asList("-Xlint:-varargs", "-Xlint:-fallthrough", "-Xlint:-rawtypes",
-				"-Xlint:-deprecation", "-Xlint:-unchecked", "-parameters"));
+				"-Xlint:-deprecation", "-Xlint:-unchecked"));
 	}
 
 	@Override
@@ -68,7 +69,6 @@ public class CompilerConventionsPlugin implements Plugin<Project> {
 	 * @param project the current project
 	 */
 	private void applyJavaCompileConventions(Project project) {
-		JavaPluginConvention java = project.getConvention().getPlugin(JavaPluginConvention.class);
 		project.getTasks().withType(JavaCompile.class)
 				.matching(compileTask -> compileTask.getName().equals(JavaPlugin.COMPILE_JAVA_TASK_NAME))
 				.forEach(compileTask -> {

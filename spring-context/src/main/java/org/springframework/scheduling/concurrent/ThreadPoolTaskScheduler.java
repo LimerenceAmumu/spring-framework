@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -169,8 +169,7 @@ public class ThreadPoolTaskScheduler extends ExecutorConfigurationSupport
 
 		this.scheduledExecutor = createExecutor(this.poolSize, threadFactory, rejectedExecutionHandler);
 
-		if (this.scheduledExecutor instanceof ScheduledThreadPoolExecutor) {
-			ScheduledThreadPoolExecutor scheduledPoolExecutor = (ScheduledThreadPoolExecutor) this.scheduledExecutor;
+		if (this.scheduledExecutor instanceof ScheduledThreadPoolExecutor scheduledPoolExecutor) {
 			if (this.removeOnCancelPolicy) {
 				scheduledPoolExecutor.setRemoveOnCancelPolicy(true);
 			}
@@ -282,6 +281,7 @@ public class ThreadPoolTaskScheduler extends ExecutorConfigurationSupport
 		}
 	}
 
+	@Deprecated
 	@Override
 	public void execute(Runnable task, long startTimeout) {
 		execute(task);

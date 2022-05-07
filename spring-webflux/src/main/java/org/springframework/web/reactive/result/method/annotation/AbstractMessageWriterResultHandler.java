@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.KotlinDetector;
@@ -29,7 +30,7 @@ import org.springframework.core.ReactiveAdapter;
 import org.springframework.core.ReactiveAdapterRegistry;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.codec.Hints;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.HttpMessageWriter;
 import org.springframework.http.converter.HttpMessageNotWritableException;
@@ -52,7 +53,7 @@ import org.springframework.web.server.ServerWebExchange;
  */
 public abstract class AbstractMessageWriterResultHandler extends HandlerResultHandlerSupport {
 
-	private static final String COROUTINES_FLOW_CLASS_NAME = "kotlinx.coroutines.flow.Flow";
+	protected static final String COROUTINES_FLOW_CLASS_NAME = "kotlinx.coroutines.flow.Flow";
 
 	private final List<HttpMessageWriter<?>> messageWriters;
 
@@ -130,7 +131,8 @@ public abstract class AbstractMessageWriterResultHandler extends HandlerResultHa
 		if (adapter != null) {
 			publisher = adapter.toPublisher(body);
 			boolean isUnwrapped = KotlinDetector.isSuspendingFunction(bodyParameter.getMethod()) &&
-					!COROUTINES_FLOW_CLASS_NAME.equals(bodyType.toClass().getName());
+					!COROUTINES_FLOW_CLASS_NAME.equals(bodyType.toClass().getName()) &&
+					!Flux.class.equals(bodyType.toClass());
 			ResolvableType genericType = isUnwrapped ? bodyType : bodyType.getGeneric();
 			elementType = getElementType(adapter, genericType);
 			actualElementType = elementType;
@@ -150,7 +152,7 @@ public abstract class AbstractMessageWriterResultHandler extends HandlerResultHa
 			bestMediaType = selectMediaType(exchange, () -> getMediaTypesFor(elementType));
 		}
 		catch (NotAcceptableStatusException ex) {
-			HttpStatus statusCode = exchange.getResponse().getStatusCode();
+			HttpStatusCode statusCode = exchange.getResponse().getStatusCode();
 			if (statusCode != null && statusCode.isError()) {
 				if (logger.isDebugEnabled()) {
 					logger.debug("Ignoring error response content (if any). " + ex.getReason());

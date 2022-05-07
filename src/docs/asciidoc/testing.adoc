@@ -32,8 +32,8 @@ manual.)
 == Unit Testing
 
 Dependency injection should make your code less dependent on the container than it would
-be with traditional Java EE development. The POJOs that make up your application should
-be testable in JUnit or TestNG tests, with objects instantiated by using the `new`
+be with traditional J2EE / Java EE development. The POJOs that make up your application
+should be testable in JUnit or TestNG tests, with objects instantiated by using the `new`
 operator, without Spring or any other container. You can use <<mock-objects, mock objects>>
 (in conjunction with other valuable testing techniques) to test your code in isolation.
 If you follow the architecture recommendations for Spring, the resulting clean layering
@@ -78,7 +78,7 @@ out-of-container tests for code that depends on environment-specific properties.
 The `org.springframework.mock.jndi` package contains a partial implementation of the JNDI
 SPI, which you can use to set up a simple JNDI environment for test suites or stand-alone
 applications. If, for example, JDBC `DataSource` instances get bound to the same JNDI
-names in test code as they do in a Java EE container, you can reuse both application code
+names in test code as they do in a Jakarta EE container, you can reuse both application code
 and configuration in testing scenarios without modification.
 
 WARNING: The mock JNDI support in the `org.springframework.mock.jndi` package is
@@ -503,6 +503,7 @@ The following example shows such a case:
 		// class body...
 	}
 ----
+<1> Declaring an initializer class.
 
 [source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
 .Kotlin
@@ -1475,12 +1476,12 @@ and can be used anywhere in the Spring Framework.
 * `@Autowired`
 * `@Qualifier`
 * `@Value`
-* `@Resource` (javax.annotation) if JSR-250 is present
-* `@ManagedBean` (javax.annotation) if JSR-250 is present
-* `@Inject` (javax.inject) if JSR-330 is present
-* `@Named` (javax.inject) if JSR-330 is present
-* `@PersistenceContext` (javax.persistence) if JPA is present
-* `@PersistenceUnit` (javax.persistence) if JPA is present
+* `@Resource` (jakarta.annotation) if JSR-250 is present
+* `@ManagedBean` (jakarta.annotation) if JSR-250 is present
+* `@Inject` (jakarta.inject) if JSR-330 is present
+* `@Named` (jakarta.inject) if JSR-330 is present
+* `@PersistenceContext` (jakarta.persistence) if JPA is present
+* `@PersistenceUnit` (jakarta.persistence) if JPA is present
 * `@Required`
 * `@Transactional` (org.springframework.transaction.annotation)
   _with <<testcontext-tx-attribute-support, limited attribute support>>_
@@ -1959,6 +1960,19 @@ example, you can create a custom `@EnabledOnMac` annotation as follows:
 	annotation class EnabledOnMac {}
 ----
 
+[NOTE]
+====
+`@EnabledOnMac` is meant only as an example of what is possible. If you have that exact
+use case, please use the built-in `@EnabledOnOs(MAC)` support in JUnit Jupiter.
+====
+
+[WARNING]
+====
+Since JUnit 5.7, JUnit Jupiter also has a condition annotation named `@EnabledIf`. Thus,
+if you wish to use Spring's `@EnabledIf` support make sure you import the annotation type
+from the correct package.
+====
+
 [[integration-testing-annotations-junit-jupiter-disabledif]]
 ===== `@DisabledIf`
 
@@ -2006,6 +2020,19 @@ example, you can create a custom `@DisabledOnMac` annotation as follows:
 	)
 	annotation class DisabledOnMac {}
 ----
+
+[NOTE]
+====
+`@DisabledOnMac` is meant only as an example of what is possible. If you have that exact
+use case, please use the built-in `@DisabledOnOs(MAC)` support in JUnit Jupiter.
+====
+
+[WARNING]
+====
+Since JUnit 5.7, JUnit Jupiter also has a condition annotation named `@DisabledIf`. Thus,
+if you wish to use Spring's `@DisabledIf` support make sure you import the annotation type
+from the correct package.
+====
 
 [[integration-testing-annotations-meta]]
 ==== Meta-Annotation Support for Testing
@@ -2613,7 +2640,7 @@ published while invoking a method in a Spring-managed component:
 			// Invoke method in OrderService that publishes an event
 			orderService.submitOrder(new Order(/* ... */));
 			// Verify that an OrderSubmitted event was published
-			int numEvents = events.stream(OrderSubmitted.class).count(); // <3>
+			long numEvents = events.stream(OrderSubmitted.class).count(); // <3>
 			assertThat(numEvents).isEqualTo(1);
 		}
 	}
@@ -2671,14 +2698,38 @@ test's `ApplicationContext` can listen to the following events published by the
 * `AfterTestMethodEvent`
 * `AfterTestClassEvent`
 
-NOTE: These events are only published if the `ApplicationContext` has already been loaded.
-
 These events may be consumed for various reasons, such as resetting mock beans or tracing
 test execution. One advantage of consuming test execution events rather than implementing
 a custom `TestExecutionListener` is that test execution events may be consumed by any
 Spring bean registered in the test `ApplicationContext`, and such beans may benefit
 directly from dependency injection and other features of the `ApplicationContext`. In
 contrast, a `TestExecutionListener` is not a bean in the `ApplicationContext`.
+
+[NOTE]
+====
+The `EventPublishingTestExecutionListener` is registered by default; however, it only
+publishes events if the `ApplicationContext` has _already been loaded_. This prevents the
+`ApplicationContext` from being loaded unnecessarily or too early.
+
+Consequently, a `BeforeTestClassEvent` will not be published until after the
+`ApplicationContext` has been loaded by another `TestExecutionListener`. For example, with
+the default set of `TestExecutionListener` implementations registered, a
+`BeforeTestClassEvent` will not be published for the first test class that uses a
+particular test `ApplicationContext`, but a `BeforeTestClassEvent` _will_ be published for
+any subsequent test class in the same test suite that uses the same test
+`ApplicationContext` since the context will already have been loaded when subsequent test
+classes run (as long as the context has not been removed from the `ContextCache` via
+`@DirtiesContext` or the max-size eviction policy).
+
+If you wish to ensure that a `BeforeTestClassEvent` is always published for every test
+class, you need to register a `TestExecutionListener` that loads the `ApplicationContext`
+in the `beforeTestClass` callback, and that `TestExecutionListener` must be registered
+_before_ the `EventPublishingTestExecutionListener`.
+
+Similarly, if `@DirtiesContext` is used to remove the `ApplicationContext` from the
+context cache after the last test method in a given test class, the `AfterTestClassEvent`
+will not be published for that test class.
+====
 
 In order to listen to test execution events, a Spring bean may choose to implement the
 `org.springframework.context.ApplicationListener` interface. Alternatively, listener
@@ -3087,7 +3138,7 @@ The term "`component class`" can refer to any of the following:
 
 * A class annotated with `@Configuration`.
 * A component (that is, a class annotated with `@Component`, `@Service`, `@Repository`, or other stereotype annotations).
-* A JSR-330 compliant class that is annotated with `javax.inject` annotations.
+* A JSR-330 compliant class that is annotated with `jakarta.inject` annotations.
 * Any class that contains `@Bean`-methods.
 * Any other class that is intended to be registered as a Spring component (i.e., a Spring
   bean in the `ApplicationContext`), potentially taking advantage of automatic autowiring
@@ -5623,7 +5674,6 @@ following example shows the relevant annotations:
 
 [[testcontext-tx-false-positives]]
 .Avoid false positives when testing ORM code
-
 [NOTE]
 =====
 When you test application code that manipulates the state of a Hibernate session or JPA
@@ -5743,6 +5793,86 @@ The following example shows matching methods for JPA:
 
 	// ...
 ----
+=====
+
+[[testcontext-tx-orm-lifecycle-callbacks]]
+.Testing ORM entity lifecycle callbacks
+[NOTE]
+=====
+Similar to the note about avoiding <<testcontext-tx-false-positives, false positives>>
+when testing ORM code, if your application makes use of entity lifecycle callbacks (also
+known as entity listeners), make sure to flush the underlying unit of work within test
+methods that run that code. Failing to _flush_ or _clear_ the underlying unit of work can
+result in certain lifecycle callbacks not being invoked.
+
+For example, when using JPA, `@PostPersist`, `@PreUpdate`, and `@PostUpdate` callbacks
+will not be called unless `entityManager.flush()` is invoked after an entity has been
+saved or updated. Similarly, if an entity is already attached to the current unit of work
+(associated with the current persistence context), an attempt to reload the entity will
+not result in a `@PostLoad` callback unless `entityManager.clear()` is invoked before the
+attempt to reload the entity.
+
+The following example shows how to flush the `EntityManager` to ensure that
+`@PostPersist` callbacks are invoked when an entity is persisted. An entity listener with
+a `@PostPersist` callback method has been registered for the `Person` entity used in the
+example.
+
+[source,java,indent=0,subs="verbatim,quotes",role="primary"]
+.Java
+----
+	// ...
+
+	@Autowired
+	JpaPersonRepository repo;
+
+	@PersistenceContext
+	EntityManager entityManager;
+
+	@Transactional
+	@Test
+	void savePerson() {
+		// EntityManager#persist(...) results in @PrePersist but not @PostPersist
+		repo.save(new Person("Jane"));
+
+		// Manual flush is required for @PostPersist callback to be invoked
+		entityManager.flush();
+
+		// Test code that relies on the @PostPersist callback
+		// having been invoked...
+	}
+
+	// ...
+----
+[source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
+.Kotlin
+----
+	// ...
+
+	@Autowired
+	lateinit var repo: JpaPersonRepository
+
+	@PersistenceContext
+	lateinit var entityManager: EntityManager
+
+	@Transactional
+	@Test
+	fun savePerson() {
+		// EntityManager#persist(...) results in @PrePersist but not @PostPersist
+		repo.save(Person("Jane"))
+
+		// Manual flush is required for @PostPersist callback to be invoked
+		entityManager.flush()
+
+		// Test code that relies on the @PostPersist callback
+		// having been invoked...
+	}
+
+	// ...
+----
+
+See
+https://github.com/spring-projects/spring-framework/blob/main/spring-test/src/test/java/org/springframework/test/context/junit/jupiter/orm/JpaEntityListenerTests.java[JpaEntityListenerTests]
+in the Spring Framework test suite for working examples using all JPA lifecycle callbacks.
 =====
 
 
@@ -7423,10 +7553,10 @@ If using MockMvc through the <<webtestclient>>, there is nothing special to do t
 asynchronous requests work as the `WebTestClient` automatically does what is described
 in this section.
 
-Servlet 3.0 asynchronous requests,
-<<web.adoc#mvc-ann-async,supported in Spring MVC>>, work by exiting the Servlet container
-thread and allowing the application to compute the response asynchronously, after which
-an async dispatch is made to complete processing on a Servlet container thread.
+Servlet asynchronous requests, <<web.adoc#mvc-ann-async,supported in Spring MVC>>,
+work by exiting the Servlet container thread and allowing the application to compute
+the response asynchronously, after which an async dispatch is made to complete
+processing on a Servlet container thread.
 
 In Spring MVC Test, async requests can be tested by asserting the produced async value
 first, then manually performing the async dispatch, and finally verifying the response.

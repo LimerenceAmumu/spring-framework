@@ -141,18 +141,16 @@ public class EncoderHttpMessageWriter<T> implements HttpMessageWriter<T> {
 		}
 
 		if (isStreamingMediaType(contentType)) {
-			return message
-					.writeAndFlushWith(body.map(buffer -> {
-						Hints.touchDataBuffer(buffer, hints, logger);
-						return Mono.just(buffer).doOnDiscard(PooledDataBuffer.class, DataBufferUtils::release);
-					}))
-					.doOnDiscard(PooledDataBuffer.class, DataBufferUtils::release);
+			return message.writeAndFlushWith(body.map(buffer -> {
+				Hints.touchDataBuffer(buffer, hints, logger);
+				return Mono.just(buffer).doOnDiscard(PooledDataBuffer.class, DataBufferUtils::release);
+			}));
 		}
 
 		if (logger.isDebugEnabled()) {
 			body = body.doOnNext(buffer -> Hints.touchDataBuffer(buffer, hints, logger));
 		}
-		return message.writeWith(body).doOnDiscard(PooledDataBuffer.class, DataBufferUtils::release);
+		return message.writeWith(body);
 	}
 
 	@Nullable
@@ -180,9 +178,6 @@ public class EncoderHttpMessageWriter<T> implements HttpMessageWriter<T> {
 			return new MediaType(main, defaultType.getCharset());
 		}
 		return main;
-	}
-
-	private static void touch(DataBuffer buffer, Map<String, Object> hints) {
 	}
 
 	private boolean isStreamingMediaType(@Nullable MediaType mediaType) {
